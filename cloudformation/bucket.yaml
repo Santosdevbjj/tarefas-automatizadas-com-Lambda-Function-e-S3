@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Description: >
-  CloudFormation template responsible for provisioning an Amazon S3 Bucket
-  used by the serverless architecture. The bucket is configured following
-  AWS security and governance best practices, including encryption,
-  versioning, public access blocking and lifecycle management.
+  Creates an Amazon S3 Bucket for the Serverless Automation project.
+  The bucket is configured following AWS security best practices,
+  including encryption, versioning, lifecycle management,
+  ownership controls and public access blocking.
 
 ###############################################################################
 # PARAMETERS
@@ -14,37 +14,57 @@ Parameters:
 
   ProjectName:
     Type: String
-    Default: tarefas-automatizadas
-    Description: Project name.
+    Default: tarefas
+    Description: Project identifier used to compose resource names.
 
   Environment:
     Type: String
     Default: dev
+
     AllowedValues:
       - dev
       - homolog
       - prod
+
     Description: Deployment environment.
 
   BucketSuffix:
     Type: String
     Default: uploads
-    Description: Bucket suffix.
+
+    Description: Logical suffix appended to the bucket name.
 
   EnableVersioning:
     Type: String
+
     Default: Enabled
+
     AllowedValues:
       - Enabled
       - Suspended
-    Description: Enable or disable bucket versioning.
 
-  LogBucketName:
+    Description: Enables or suspends bucket versioning.
+
+  EnableAccessLogging:
+
     Type: String
+
+    Default: "false"
+
+    AllowedValues:
+      - "true"
+      - "false"
+
+    Description: Enable Amazon S3 Server Access Logging.
+
+  AccessLogsBucket:
+
+    Type: String
+
     Default: ""
+
     Description: >
-      Optional bucket used to store S3 Access Logs.
-      Leave empty if logging is not required.
+      Optional bucket used to store Amazon S3 Access Logs.
 
 ###############################################################################
 # CONDITIONS
@@ -52,10 +72,13 @@ Parameters:
 
 Conditions:
 
-  HasLogBucket: !Not
-    - !Equals
-      - !Ref LogBucketName
-      - ""
+  EnableLogging:
+
+    !And
+
+      - !Equals [!Ref EnableAccessLogging, "true"]
+
+      - !Not [!Equals [!Ref AccessLogsBucket, ""]]
 
 ###############################################################################
 # RESOURCES
@@ -64,7 +87,7 @@ Conditions:
 Resources:
 
 ###############################################################################
-# Amazon S3 Bucket
+# AMAZON S3 BUCKET
 ###############################################################################
 
   ApplicationBucket:
@@ -74,16 +97,23 @@ Resources:
     Properties:
 
       BucketName: !Sub
-        - "${Project}-${Environment}-${Account}-${Region}-${Suffix}"
+        - "${Project}-${Env}-${Account}-${Suffix}"
         - Project: !Ref ProjectName
-          Environment: !Ref Environment
+          Env: !Ref Environment
           Account: !Ref AWS::AccountId
-          Region: !Ref AWS::Region
           Suffix: !Ref BucketSuffix
+
+###############################################################################
+# VERSIONING
+###############################################################################
 
       VersioningConfiguration:
 
         Status: !Ref EnableVersioning
+
+###############################################################################
+# ENCRYPTION
+###############################################################################
 
       BucketEncryption:
 
@@ -93,15 +123,23 @@ Resources:
 
               SSEAlgorithm: AES256
 
+###############################################################################
+# PUBLIC ACCESS BLOCK
+###############################################################################
+
       PublicAccessBlockConfiguration:
 
         BlockPublicAcls: true
 
-        BlockPublicPolicy: true
-
         IgnorePublicAcls: true
 
+        BlockPublicPolicy: true
+
         RestrictPublicBuckets: true
+
+###############################################################################
+# OBJECT OWNERSHIP
+###############################################################################
 
       OwnershipControls:
 
@@ -109,11 +147,15 @@ Resources:
 
           - ObjectOwnership: BucketOwnerEnforced
 
+###############################################################################
+# LIFECYCLE CONFIGURATION
+###############################################################################
+
       LifecycleConfiguration:
 
         Rules:
 
-          - Id: DeleteIncompleteMultipartUploads
+          - Id: AbortIncompleteMultipartUploads
 
             Status: Enabled
 
@@ -131,7 +173,7 @@ Resources:
 
                 TransitionInDays: 30
 
-          - Id: ExpireOldVersions
+          - Id: DeleteOldVersions
 
             Status: Enabled
 
@@ -139,33 +181,57 @@ Resources:
 
               NoncurrentDays: 365
 
+###############################################################################
+# SERVER ACCESS LOGGING
+###############################################################################
+
       LoggingConfiguration:
 
         !If
 
-          - HasLogBucket
+          - EnableLogging
 
-          - DestinationBucketName: !Ref LogBucketName
+          - DestinationBucketName: !Ref AccessLogsBucket
             LogFilePrefix: access-logs/
 
           - !Ref AWS::NoValue
 
+###############################################################################
+# TAGS
+###############################################################################
+
       Tags:
 
+        - Key: Name
+
+          Value: !Sub "${ProjectName}-${Environment}-bucket"
+
         - Key: Project
+
           Value: !Ref ProjectName
 
         - Key: Environment
+
           Value: !Ref Environment
 
-        - Key: ManagedBy
-          Value: CloudFormation
-
         - Key: Service
+
           Value: Amazon S3
 
-###############################################################################
-# Bucket Policy
+        - Key: ManagedBy
+
+          Value: CloudFormation
+
+        - Key: Repository
+
+          Value: tarefas-automatizadas-com-Lambda-Function-e-S3
+
+        - Key: CostCenter
+
+          Value: Cloud-Lab 
+
+          ###############################################################################
+# BUCKET POLICY
 ###############################################################################
 
   ApplicationBucketPolicy:
@@ -182,6 +248,10 @@ Resources:
 
         Statement:
 
+###############################################################################
+# REQUIRE HTTPS
+###############################################################################
+
           - Sid: DenyInsecureTransport
 
             Effect: Deny
@@ -192,15 +262,61 @@ Resources:
 
             Resource:
 
-              - !Sub "${ApplicationBucket.Arn}"
-
+              - !GetAtt ApplicationBucket.Arn
               - !Sub "${ApplicationBucket.Arn}/*"
 
             Condition:
 
               Bool:
 
-                aws:SecureTransport: false
+                aws:SecureTransport: "false"
+
+###############################################################################
+# DENY UNENCRYPTED OBJECT UPLOADS
+###############################################################################
+
+          - Sid: DenyUnencryptedUploads
+
+            Effect: Deny
+
+            Principal: "*"
+
+            Action:
+
+              - s3:PutObject
+
+            Resource:
+
+              - !Sub "${ApplicationBucket.Arn}/*"
+
+            Condition:
+
+              StringNotEquals:
+
+                s3:x-amz-server-side-encryption: AES256
+
+###############################################################################
+# OPTIONAL TLS VERSION ENFORCEMENT
+###############################################################################
+
+          - Sid: EnforceModernTLS
+
+            Effect: Deny
+
+            Principal: "*"
+
+            Action: "s3:*"
+
+            Resource:
+
+              - !GetAtt ApplicationBucket.Arn
+              - !Sub "${ApplicationBucket.Arn}/*"
+
+            Condition:
+
+              NumericLessThan:
+
+                s3:TlsVersion: 1.2
 
 ###############################################################################
 # OUTPUTS
@@ -228,17 +344,7 @@ Outputs:
 
       Name: !Sub "${AWS::StackName}-BucketArn"
 
-  BucketDomainName:
-
-    Description: Regional bucket domain name.
-
-    Value: !GetAtt ApplicationBucket.RegionalDomainName
-
-    Export:
-
-      Name: !Sub "${AWS::StackName}-BucketDomain"
-
-  BucketRegionalDomain:
+  BucketRegionalDomainName:
 
     Description: Regional endpoint.
 
@@ -246,4 +352,25 @@ Outputs:
 
     Export:
 
-      Name: !Sub "${AWS::StackName}-BucketRegionalDomain"
+      Name: !Sub "${AWS::StackName}-BucketRegionalDomainName"
+
+  BucketDomainName:
+
+    Description: Bucket DNS name.
+
+    Value: !GetAtt ApplicationBucket.DomainName
+
+    Export:
+
+      Name: !Sub "${AWS::StackName}-BucketDomainName"
+
+  BucketWebsiteURL:
+
+    Description: Website endpoint (if website hosting is enabled).
+
+    Value: !GetAtt ApplicationBucket.WebsiteURL
+
+    Export:
+
+      Name: !Sub "${AWS::StackName}-BucketWebsiteURL" 
+      
