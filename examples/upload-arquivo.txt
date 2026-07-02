@@ -1,0 +1,14 @@
+Este é um arquivo de exemplo para testar a automação serverless AWS.
+
+Objetivo:
+- Simular upload no Amazon S3
+- Disparar evento ObjectCreated
+- Acionar AWS Lambda automaticamente
+
+Conteúdo:
+- Projeto: tarefas-automatizadas
+- Ambiente: dev
+- Tipo: arquivo de teste para processamento event-driven
+
+Linha final:
+EOF - upload de teste concluído com sucesso.
