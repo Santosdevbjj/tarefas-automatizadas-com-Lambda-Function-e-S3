@@ -85,22 +85,7 @@ Além dos objetivos técnicos, este repositório busca demonstrar como arquitetu
 
 ---
 
-## Arquitetura da Solução
 
-A solução proposta utiliza uma arquitetura totalmente Serverless baseada em eventos.
-
-Sempre que um arquivo é enviado ao bucket do Amazon S3, um evento ObjectCreated é gerado automaticamente.
-
-Esse evento dispara uma função AWS Lambda responsável pelo processamento do objeto. Durante sua execução, a função pode validar informações, transformar arquivos, registrar logs no Amazon CloudWatch, atualizar metadados ou executar qualquer outra regra de negócio implementada.
-
-Todo o fluxo ocorre de maneira automática, sem necessidade de servidores dedicados, reduzindo custos operacionais e aumentando a escalabilidade da solução.
-
-Nos próximos tópicos serão apresentados a arquitetura completa, os serviços utilizados, os templates de infraestrutura, o código da função Lambda, as configurações de segurança, o monitoramento da solução e os resultados obtidos durante a implementação do laboratório.
-
----
-
-
----
 
 ## Arquitetura da Solução
 
@@ -116,7 +101,10 @@ O fluxo foi desenvolvido utilizando serviços gerenciados da AWS, seguindo princ
 
 <p align="center">
 <img src="./assets/arquitetura.png" alt="Arquitetura Serverless AWS">
-</p>                    Upload de Arquivo
+</p>  
+
+         ```
+                  Upload de Arquivo
 
                            │
                            ▼
@@ -144,13 +132,16 @@ O fluxo foi desenvolvido utilizando serviços gerenciados da AWS, seguindo princ
 
                  Resultado da Automação
 
+
+```
+
 ---
 
 ## Fluxo da Solução
 
 O funcionamento da arquitetura ocorre em cinco etapas principais.
 
-## 1. Upload do arquivo
+1. Upload do arquivo
 
 Um usuário, aplicação ou serviço realiza o envio de um arquivo para um bucket do Amazon S3.
 
@@ -162,7 +153,7 @@ O bucket funciona como ponto central de armazenamento dos objetos.
 
 Após a conclusão do upload, o Amazon S3 gera automaticamente um evento do tipo ObjectCreated.
 
-Esse evento contém informações importantes, como:
+## Esse evento contém informações importantes, como:
 
 - nome do bucket;
 - chave (Key) do objeto;
@@ -215,7 +206,7 @@ Esse monitoramento facilita a identificação de problemas e auxilia na evoluç�
 
 ---
 
-Serviços AWS Utilizados
+## Serviços AWS Utilizados
 
 A arquitetura faz uso dos seguintes serviços da Amazon Web Services.
 
@@ -253,13 +244,13 @@ Durante o desenvolvimento deste laboratório foram utilizados os seguintes recur
 
 Durante o desenvolvimento da solução foram adotadas algumas decisões visando simplicidade, escalabilidade e alinhamento às boas práticas da AWS.
 
-## Arquitetura Serverless
+Arquitetura Serverless
 
 A utilização do AWS Lambda elimina a necessidade de administrar servidores, reduzindo custos operacionais e simplificando a manutenção da infraestrutura.
 
 ---
 
-Arquitetura Orientada a Eventos
+## Arquitetura Orientada a Eventos
 
 O Amazon S3 foi configurado para disparar automaticamente eventos de criação de objetos, permitindo que o processamento ocorra apenas quando necessário.
 
@@ -308,5 +299,8 @@ A arquitetura implementada oferece diversas vantagens quando comparada a soluç�
 
 Essas características fazem do modelo Serverless uma excelente alternativa para aplicações que precisam responder rapidamente a eventos gerados em ambientes de nuvem.
 
+
+
+---
 
 
