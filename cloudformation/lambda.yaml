@@ -1,10 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Description: >
-  CloudFormation template responsible for provisioning an AWS Lambda Function
-  used to automate Amazon S3 event processing. The template creates the Lambda
-  function, CloudWatch Log Group and exports resources for integration with
-  other CloudFormation stacks.
+  AWS Lambda function responsible for processing Amazon S3 events in a
+  serverless automation architecture. The function is integrated with
+  IAM (least privilege), CloudWatch Logs, and X-Ray observability.
 
 ###############################################################################
 # PARAMETERS
@@ -15,103 +14,54 @@ Parameters:
   ProjectName:
     Type: String
     Default: tarefas-automatizadas
-    Description: Project name.
 
   Environment:
-
     Type: String
-
     Default: dev
-
     AllowedValues:
-
       - dev
-
       - homolog
-
       - prod
 
-    Description: Deployment environment.
-
   LambdaFunctionName:
-
     Type: String
-
     Default: s3-event-processor
 
-    Description: Lambda Function name.
-
   Runtime:
-
     Type: String
-
     Default: python3.13
-
     AllowedValues:
-
       - python3.12
-
       - python3.13
 
-    Description: Lambda runtime.
-
   Architecture:
-
     Type: String
-
     Default: arm64
-
     AllowedValues:
-
       - arm64
-
       - x86_64
 
-    Description: CPU Architecture.
-
   MemorySize:
-
     Type: Number
-
     Default: 256
-
     MinValue: 128
-
     MaxValue: 10240
 
-    Description: Memory allocation (MB).
-
   Timeout:
-
     Type: Number
-
     Default: 30
-
     MinValue: 3
-
     MaxValue: 900
 
-    Description: Function timeout in seconds.
-
   LambdaRoleArn:
-
     Type: String
-
-    Description: ARN of the IAM Role created by iam.yaml.
 
   SourceBucket:
-
     Type: String
-
-    Description: Bucket that stores the Lambda deployment package.
 
   SourceKey:
-
     Type: String
-
     Default: lambda/lambda.zip
-
-    Description: Key of the deployment package.
 
 ###############################################################################
 # RESOURCES
@@ -120,26 +70,40 @@ Parameters:
 Resources:
 
 ###############################################################################
-# Lambda Function
+# CLOUDWATCH LOG GROUP
+###############################################################################
+
+  LambdaLogGroup:
+
+    Type: AWS::Logs::LogGroup
+
+    Properties:
+
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-${Environment}-${LambdaFunctionName}"
+
+      RetentionInDays: 30
+
+###############################################################################
+# LAMBDA FUNCTION
 ###############################################################################
 
   LambdaFunction:
 
     Type: AWS::Lambda::Function
 
+    DependsOn:
+
+      - LambdaLogGroup
+
     Properties:
 
       FunctionName: !Sub "${ProjectName}-${Environment}-${LambdaFunctionName}"
-
-      Description: >
-        Automatically processes Amazon S3 ObjectCreated events.
 
       Runtime: !Ref Runtime
 
       Handler: lambda_function.lambda_handler
 
       Architectures:
-
         - !Ref Architecture
 
       Role: !Ref LambdaRoleArn
@@ -148,7 +112,7 @@ Resources:
 
       MemorySize: !Ref MemorySize
 
-      PackageType: Zip
+      ReservedConcurrentExecutions: 10
 
       Code:
 
@@ -173,33 +137,19 @@ Resources:
       Tags:
 
         - Key: Project
-
           Value: !Ref ProjectName
 
         - Key: Environment
-
           Value: !Ref Environment
 
         - Key: ManagedBy
-
           Value: CloudFormation
 
-###############################################################################
-# CloudWatch Logs
-###############################################################################
-
-  LambdaLogGroup:
-
-    Type: AWS::Logs::LogGroup
-
-    Properties:
-
-      LogGroupName: !Sub "/aws/lambda/${ProjectName}-${Environment}-${LambdaFunctionName}"
-
-      RetentionInDays: 30
+        - Key: Service
+          Value: Lambda
 
 ###############################################################################
-# Lambda Permission for Amazon S3
+# LAMBDA PERMISSION (S3 INVOCATION)
 ###############################################################################
 
   LambdaInvokePermission:
@@ -214,6 +164,8 @@ Resources:
 
       Principal: s3.amazonaws.com
 
+      SourceAccount: !Ref AWS::AccountId
+
 ###############################################################################
 # OUTPUTS
 ###############################################################################
@@ -222,30 +174,21 @@ Outputs:
 
   LambdaFunctionName:
 
-    Description: Lambda Function Name.
-
     Value: !Ref LambdaFunction
 
     Export:
-
-      Name: !Sub "${AWS::StackName}-LambdaFunctionName"
+      Name: !Sub "${AWS::StackName}-LambdaName"
 
   LambdaFunctionArn:
-
-    Description: Lambda Function ARN.
 
     Value: !GetAtt LambdaFunction.Arn
 
     Export:
-
-      Name: !Sub "${AWS::StackName}-LambdaFunctionArn"
+      Name: !Sub "${AWS::StackName}-LambdaArn"
 
   LambdaLogGroup:
-
-    Description: CloudWatch Log Group.
 
     Value: !Ref LambdaLogGroup
 
     Export:
-
       Name: !Sub "${AWS::StackName}-LambdaLogGroup"
