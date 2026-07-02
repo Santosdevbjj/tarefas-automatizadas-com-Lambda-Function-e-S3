@@ -1,3 +1,10 @@
+## Formação AWS Cloud Foundations.
+
+<img width="105" height="120" alt="1000127839" src="https://github.com/user-attachments/assets/9966277d-4c96-4fc7-a837-3672d4aa70b5" />
+
+
+---
+
 
 Executando Tarefas Automatizadas com AWS Lambda Function e Amazon S3
 
@@ -807,5 +814,19 @@ Mais do que um exercício técnico, este projeto evidencia como a computação e
 Este repositório também serve como material de consulta e portfólio profissional, demonstrando competências em arquitetura Serverless, automação, observabilidade, segurança e Infraestrutura como Código (IaC), habilidades essenciais para profissionais que atuam com Cloud Computing.
 
 ---
+
+
+## 👤 14. Autor
+
+**Sérgio Santos** — Senior Data Engineer & Cloud Architect
+
+15+ anos em sistemas bancários de missão crítica (Banco Bradesco S.A.) · DIO Campus Expert
+
+[![Portfólio](https://img.shields.io/badge/Portfólio-Sérgio_Santos-111827?style=for-the-badge&logo=githubpages&logoColor=00eaff)](https://portfoliosantossergio.vercel.app)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Sérgio_Santos-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/santossergioluiz)
+
+---
+
+
 
 
