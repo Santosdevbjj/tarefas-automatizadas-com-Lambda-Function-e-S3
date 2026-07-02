@@ -1,0 +1,5 @@
+# AWS SDK (already available in Lambda runtime, but included for local dev)
+boto3>=1.34.0
+
+# Optional utilities for future evolution (safe for production use)
+urllib3>=2.0.0
