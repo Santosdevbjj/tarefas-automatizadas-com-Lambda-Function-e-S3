@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  Master CloudFormation Stack responsible for orchestrating the deployment
+  of the serverless architecture used in this project.
+  This template provisions the infrastructure by invoking the nested stacks
+  responsible for Amazon S3, IAM and AWS Lambda resources.
+
+###############################################################################
+# PARAMETERS
+###############################################################################
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: tarefas-automatizadas
+    Description: Project name.
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - homolog
+      - prod
+
+  BucketTemplateURL:
+    Type: String
+    Description: Amazon S3 URL of bucket.yaml
+
+  IAMTemplateURL:
+    Type: String
+    Description: Amazon S3 URL of iam.yaml
+
+  LambdaTemplateURL:
+    Type: String
+    Description: Amazon S3 URL of lambda.yaml
+
+###############################################################################
+# NESTED STACKS
+###############################################################################
+
+Resources:
+
+  BucketStack:
+
+    Type: AWS::CloudFormation::Stack
+
+    Properties:
+
+      TemplateURL: !Ref BucketTemplateURL
+
+      Parameters:
+
+        ProjectName: !Ref ProjectName
+
+        Environment: !Ref Environment
+
+  IAMStack:
+
+    Type: AWS::CloudFormation::Stack
+
+    DependsOn:
+
+      - BucketStack
+
+    Properties:
+
+      TemplateURL: !Ref IAMTemplateURL
+
+      Parameters:
+
+        ProjectName: !Ref ProjectName
+
+        Environment: !Ref Environment
+
+        BucketName:
+
+          Fn::GetAtt:
+
+            - BucketStack
+
+            - Outputs.BucketName
+
+  LambdaStack:
+
+    Type: AWS::CloudFormation::Stack
+
+    DependsOn:
+
+      - IAMStack
+
+    Properties:
+
+      TemplateURL: !Ref LambdaTemplateURL
+
+      Parameters:
+
+        ProjectName: !Ref ProjectName
+
+        Environment: !Ref Environment
+
+        LambdaRoleArn:
+
+          Fn::GetAtt:
+
+            - IAMStack
+
+            - Outputs.LambdaExecutionRoleArn
+
+        SourceBucket:
+
+          Fn::GetAtt:
+
+            - BucketStack
+
+            - Outputs.BucketName
+
+###############################################################################
+# OUTPUTS
+###############################################################################
+
+Outputs:
+
+  BucketName:
+
+    Description: Amazon S3 Bucket Name
+
+    Value:
+
+      Fn::GetAtt:
+
+        - BucketStack
+
+        - Outputs.BucketName
+
+  LambdaFunctionArn:
+
+    Description: Lambda Function ARN
+
+    Value:
+
+      Fn::GetAtt:
+
+        - LambdaStack
+
+        - Outputs.LambdaFunctionArn
+
+  LambdaExecutionRoleArn:
+
+    Description: IAM Role ARN
+
+    Value:
+
+      Fn::GetAtt:
+
+        - IAMStack
+
+        - Outputs.LambdaExecutionRoleArn
