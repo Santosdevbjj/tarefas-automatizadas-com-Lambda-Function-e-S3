@@ -103,7 +103,7 @@ O fluxo foi desenvolvido utilizando serviços gerenciados da AWS, seguindo princ
 <img src="./assets/arquitetura.png" alt="Arquitetura Serverless AWS">
 </p>  
 
-         ```
+
                   Upload de Arquivo
 
                            │
