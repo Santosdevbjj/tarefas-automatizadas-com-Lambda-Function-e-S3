@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  CloudFormation template responsible for provisioning an Amazon S3 Bucket
+  used by the serverless architecture. The bucket is configured following
+  AWS security and governance best practices, including encryption,
+  versioning, public access blocking and lifecycle management.
+
+###############################################################################
+# PARAMETERS
+###############################################################################
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: tarefas-automatizadas
+    Description: Project name.
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - homolog
+      - prod
+    Description: Deployment environment.
+
+  BucketSuffix:
+    Type: String
+    Default: uploads
+    Description: Bucket suffix.
+
+  EnableVersioning:
+    Type: String
+    Default: Enabled
+    AllowedValues:
+      - Enabled
+      - Suspended
+    Description: Enable or disable bucket versioning.
+
+  LogBucketName:
+    Type: String
+    Default: ""
+    Description: >
+      Optional bucket used to store S3 Access Logs.
+      Leave empty if logging is not required.
+
+###############################################################################
+# CONDITIONS
+###############################################################################
+
+Conditions:
+
+  HasLogBucket: !Not
+    - !Equals
+      - !Ref LogBucketName
+      - ""
+
+###############################################################################
+# RESOURCES
+###############################################################################
+
+Resources:
+
+###############################################################################
+# Amazon S3 Bucket
+###############################################################################
+
+  ApplicationBucket:
+
+    Type: AWS::S3::Bucket
+
+    Properties:
+
+      BucketName: !Sub
+        - "${Project}-${Environment}-${Account}-${Region}-${Suffix}"
+        - Project: !Ref ProjectName
+          Environment: !Ref Environment
+          Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          Suffix: !Ref BucketSuffix
+
+      VersioningConfiguration:
+
+        Status: !Ref EnableVersioning
+
+      BucketEncryption:
+
+        ServerSideEncryptionConfiguration:
+
+          - ServerSideEncryptionByDefault:
+
+              SSEAlgorithm: AES256
+
+      PublicAccessBlockConfiguration:
+
+        BlockPublicAcls: true
+
+        BlockPublicPolicy: true
+
+        IgnorePublicAcls: true
+
+        RestrictPublicBuckets: true
+
+      OwnershipControls:
+
+        Rules:
+
+          - ObjectOwnership: BucketOwnerEnforced
+
+      LifecycleConfiguration:
+
+        Rules:
+
+          - Id: DeleteIncompleteMultipartUploads
+
+            Status: Enabled
+
+            AbortIncompleteMultipartUpload:
+
+              DaysAfterInitiation: 7
+
+          - Id: TransitionOldVersions
+
+            Status: Enabled
+
+            NoncurrentVersionTransitions:
+
+              - StorageClass: STANDARD_IA
+
+                TransitionInDays: 30
+
+          - Id: ExpireOldVersions
+
+            Status: Enabled
+
+            NoncurrentVersionExpiration:
+
+              NoncurrentDays: 365
+
+      LoggingConfiguration:
+
+        !If
+
+          - HasLogBucket
+
+          - DestinationBucketName: !Ref LogBucketName
+            LogFilePrefix: access-logs/
+
+          - !Ref AWS::NoValue
+
+      Tags:
+
+        - Key: Project
+          Value: !Ref ProjectName
+
+        - Key: Environment
+          Value: !Ref Environment
+
+        - Key: ManagedBy
+          Value: CloudFormation
+
+        - Key: Service
+          Value: Amazon S3
+
+###############################################################################
+# Bucket Policy
+###############################################################################
+
+  ApplicationBucketPolicy:
+
+    Type: AWS::S3::BucketPolicy
+
+    Properties:
+
+      Bucket: !Ref ApplicationBucket
+
+      PolicyDocument:
+
+        Version: "2012-10-17"
+
+        Statement:
+
+          - Sid: DenyInsecureTransport
+
+            Effect: Deny
+
+            Principal: "*"
+
+            Action: "s3:*"
+
+            Resource:
+
+              - !Sub "${ApplicationBucket.Arn}"
+
+              - !Sub "${ApplicationBucket.Arn}/*"
+
+            Condition:
+
+              Bool:
+
+                aws:SecureTransport: false
+
+###############################################################################
+# OUTPUTS
+###############################################################################
+
+Outputs:
+
+  BucketName:
+
+    Description: Amazon S3 Bucket Name.
+
+    Value: !Ref ApplicationBucket
+
+    Export:
+
+      Name: !Sub "${AWS::StackName}-BucketName"
+
+  BucketArn:
+
+    Description: Amazon S3 Bucket ARN.
+
+    Value: !GetAtt ApplicationBucket.Arn
+
+    Export:
+
+      Name: !Sub "${AWS::StackName}-BucketArn"
+
+  BucketDomainName:
+
+    Description: Regional bucket domain name.
+
+    Value: !GetAtt ApplicationBucket.RegionalDomainName
+
+    Export:
+
+      Name: !Sub "${AWS::StackName}-BucketDomain"
+
+  BucketRegionalDomain:
+
+    Description: Regional endpoint.
+
+    Value: !GetAtt ApplicationBucket.RegionalDomainName
+
+    Export:
+
+      Name: !Sub "${AWS::StackName}-BucketRegionalDomain"
