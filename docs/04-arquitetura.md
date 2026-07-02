@@ -94,5 +94,5 @@ A arquitetura pode ser expandida para incluir:
 - EventBridge (roteamento avançado)
 - API Gateway (entrada externa)
 
-- 
+
             
