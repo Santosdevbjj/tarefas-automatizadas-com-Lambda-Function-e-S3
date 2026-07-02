@@ -1,0 +1,220 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  CloudFormation template responsible for provisioning the IAM Role and IAM
+  Policies required by the AWS Lambda function. The permissions follow the
+  Principle of Least Privilege (PoLP), allowing only the actions necessary
+  to process Amazon S3 events and write logs to Amazon CloudWatch.
+
+###############################################################################
+# PARAMETERS
+###############################################################################
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: tarefas-automatizadas
+    Description: Project name.
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - homolog
+      - prod
+    Description: Deployment environment.
+
+  BucketName:
+    Type: String
+    Description: Amazon S3 bucket name that triggers the Lambda function.
+
+###############################################################################
+# RESOURCES
+###############################################################################
+
+Resources:
+
+###############################################################################
+# IAM ROLE
+###############################################################################
+
+  LambdaExecutionRole:
+
+    Type: AWS::IAM::Role
+
+    Properties:
+
+      RoleName: !Sub "${ProjectName}-${Environment}-lambda-role"
+
+      Description: >
+        IAM Role assumed by AWS Lambda for processing Amazon S3 events.
+
+      AssumeRolePolicyDocument:
+
+        Version: "2012-10-17"
+
+        Statement:
+
+          - Effect: Allow
+
+            Principal:
+
+              Service:
+
+                - lambda.amazonaws.com
+
+            Action:
+
+              - sts:AssumeRole
+
+      Tags:
+
+        - Key: Project
+          Value: !Ref ProjectName
+
+        - Key: Environment
+          Value: !Ref Environment
+
+        - Key: ManagedBy
+          Value: CloudFormation
+
+###############################################################################
+# CLOUDWATCH LOGS POLICY
+###############################################################################
+
+  CloudWatchLogsPolicy:
+
+    Type: AWS::IAM::Policy
+
+    Properties:
+
+      PolicyName: !Sub "${ProjectName}-${Environment}-cloudwatch-policy"
+
+      Roles:
+
+        - !Ref LambdaExecutionRole
+
+      PolicyDocument:
+
+        Version: "2012-10-17"
+
+        Statement:
+
+          - Sid: CloudWatchLogs
+
+            Effect: Allow
+
+            Action:
+
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+
+            Resource: "*"
+
+###############################################################################
+# AMAZON S3 ACCESS POLICY
+###############################################################################
+
+  S3AccessPolicy:
+
+    Type: AWS::IAM::Policy
+
+    Properties:
+
+      PolicyName: !Sub "${ProjectName}-${Environment}-s3-policy"
+
+      Roles:
+
+        - !Ref LambdaExecutionRole
+
+      PolicyDocument:
+
+        Version: "2012-10-17"
+
+        Statement:
+
+          - Sid: ReadObjects
+
+            Effect: Allow
+
+            Action:
+
+              - s3:GetObject
+
+            Resource:
+
+              - !Sub "arn:aws:s3:::${BucketName}/*"
+
+          - Sid: ListBucket
+
+            Effect: Allow
+
+            Action:
+
+              - s3:ListBucket
+
+            Resource:
+
+              - !Sub "arn:aws:s3:::${BucketName}"
+
+###############################################################################
+# OPTIONAL X-RAY PERMISSIONS
+###############################################################################
+
+  XRayPolicy:
+
+    Type: AWS::IAM::Policy
+
+    Properties:
+
+      PolicyName: !Sub "${ProjectName}-${Environment}-xray-policy"
+
+      Roles:
+
+        - !Ref LambdaExecutionRole
+
+      PolicyDocument:
+
+        Version: "2012-10-17"
+
+        Statement:
+
+          - Sid: XRayTracing
+
+            Effect: Allow
+
+            Action:
+
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+
+            Resource: "*"
+
+###############################################################################
+# OUTPUTS
+###############################################################################
+
+Outputs:
+
+  LambdaExecutionRoleName:
+
+    Description: IAM Role name used by the Lambda function.
+
+    Value: !Ref LambdaExecutionRole
+
+    Export:
+
+      Name: !Sub "${AWS::StackName}-LambdaExecutionRole"
+
+  LambdaExecutionRoleArn:
+
+    Description: IAM Role ARN.
+
+    Value: !GetAtt LambdaExecutionRole.Arn
+
+    Export:
+
+      Name: !Sub "${AWS::StackName}-LambdaExecutionRoleArn"
