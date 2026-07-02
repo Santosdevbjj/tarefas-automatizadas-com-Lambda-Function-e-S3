@@ -6,7 +6,7 @@
 ---
 
 
-Executando Tarefas Automatizadas com AWS Lambda Function e Amazon S3
+## Executando Tarefas Automatizadas com AWS Lambda Function e Amazon S3
 
 <p align="center">
 <img src="./assets/banner.png" alt="AWS Lambda e Amazon S3">
@@ -21,7 +21,7 @@ Executando Tarefas Automatizadas com AWS Lambda Function e Amazon S3
 
 </p>---
 
-Visão Geral
+## Visão Geral
 
 Empresas processam diariamente milhares de arquivos armazenados em serviços de armazenamento em nuvem. Em muitos cenários, atividades como validação, organização, transformação de dados, geração de relatórios e envio de notificações ainda dependem de processos manuais, aumentando o tempo de resposta, os custos operacionais e a possibilidade de falhas humanas.
 
@@ -33,7 +33,7 @@ Além da implementação técnica, este repositório foi elaborado como material
 
 ---
 
-Problema de Negócio
+## Problema de Negócio
 
 Organizações de diferentes segmentos armazenam continuamente documentos, imagens, planilhas, arquivos de log e diversos outros tipos de objetos em buckets do Amazon S3.
 
@@ -52,7 +52,7 @@ Surge então a necessidade de uma arquitetura capaz de responder automaticamente
 
 ---
 
-Contexto
+## Contexto
 
 A arquitetura Serverless da AWS oferece um modelo baseado em eventos (Event-Driven Architecture), no qual serviços gerenciados reagem automaticamente às alterações ocorridas no ambiente.
 
