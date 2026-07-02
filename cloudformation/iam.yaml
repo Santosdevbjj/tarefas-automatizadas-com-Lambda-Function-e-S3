@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Description: >
-  CloudFormation template responsible for provisioning the IAM Role and IAM
-  Policies required by the AWS Lambda function. The permissions follow the
-  Principle of Least Privilege (PoLP), allowing only the actions necessary
-  to process Amazon S3 events and write logs to Amazon CloudWatch.
+  IAM layer for the Serverless Automation project.
+  Defines the execution role and base policies for AWS Lambda
+  following the Principle of Least Privilege (PoLP),
+  with secure logging and S3 access controls.
 
 ###############################################################################
 # PARAMETERS
@@ -15,20 +15,35 @@ Parameters:
   ProjectName:
     Type: String
     Default: tarefas-automatizadas
-    Description: Project name.
+    Description: Project name used for resource naming.
 
   Environment:
     Type: String
     Default: dev
+
     AllowedValues:
       - dev
       - homolog
       - prod
+
     Description: Deployment environment.
 
   BucketName:
     Type: String
-    Description: Amazon S3 bucket name that triggers the Lambda function.
+    Description: S3 bucket that the Lambda function will access.
+
+  LogGroupName:
+    Type: String
+    Default: ""
+    Description: Optional CloudWatch Log Group name for tighter IAM scope.
+
+###############################################################################
+# CONDITIONS
+###############################################################################
+
+Conditions:
+
+  HasCustomLogGroup: !Not [!Equals [!Ref LogGroupName, ""]]
 
 ###############################################################################
 # RESOURCES
@@ -37,7 +52,7 @@ Parameters:
 Resources:
 
 ###############################################################################
-# IAM ROLE
+# IAM ROLE - LAMBDA EXECUTION ROLE
 ###############################################################################
 
   LambdaExecutionRole:
@@ -49,7 +64,8 @@ Resources:
       RoleName: !Sub "${ProjectName}-${Environment}-lambda-role"
 
       Description: >
-        IAM Role assumed by AWS Lambda for processing Amazon S3 events.
+        Execution role for AWS Lambda function responsible for
+        processing S3 events and writing logs to CloudWatch.
 
       AssumeRolePolicyDocument:
 
@@ -69,6 +85,14 @@ Resources:
 
               - sts:AssumeRole
 
+      ManagedPolicyArns:
+
+        # AWS managed policy for basic Lambda logging
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+        # X-Ray observability (best practice instead of inline policy)
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+
       Tags:
 
         - Key: Project
@@ -80,42 +104,11 @@ Resources:
         - Key: ManagedBy
           Value: CloudFormation
 
-###############################################################################
-# CLOUDWATCH LOGS POLICY
-###############################################################################
-
-  CloudWatchLogsPolicy:
-
-    Type: AWS::IAM::Policy
-
-    Properties:
-
-      PolicyName: !Sub "${ProjectName}-${Environment}-cloudwatch-policy"
-
-      Roles:
-
-        - !Ref LambdaExecutionRole
-
-      PolicyDocument:
-
-        Version: "2012-10-17"
-
-        Statement:
-
-          - Sid: CloudWatchLogs
-
-            Effect: Allow
-
-            Action:
-
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-
-            Resource: "*"
+        - Key: Layer
+          Value: IAM
 
 ###############################################################################
-# AMAZON S3 ACCESS POLICY
+# S3 ACCESS POLICY (STRICT LEAST PRIVILEGE)
 ###############################################################################
 
   S3AccessPolicy:
@@ -124,7 +117,7 @@ Resources:
 
     Properties:
 
-      PolicyName: !Sub "${ProjectName}-${Environment}-s3-policy"
+      PolicyName: !Sub "${ProjectName}-${Environment}-s3-access"
 
       Roles:
 
@@ -136,19 +129,28 @@ Resources:
 
         Statement:
 
-          - Sid: ReadObjects
+###############################################################################
+# READ OBJECTS FROM SPECIFIC BUCKET ONLY
+###############################################################################
+
+          - Sid: AllowReadObjects
 
             Effect: Allow
 
             Action:
 
               - s3:GetObject
+              - s3:GetObjectVersion
 
             Resource:
 
               - !Sub "arn:aws:s3:::${BucketName}/*"
 
-          - Sid: ListBucket
+###############################################################################
+# LIST BUCKET CONTENT (LIMITED SCOPE)
+###############################################################################
+
+          - Sid: AllowListBucket
 
             Effect: Allow
 
@@ -161,16 +163,31 @@ Resources:
               - !Sub "arn:aws:s3:::${BucketName}"
 
 ###############################################################################
-# OPTIONAL X-RAY PERMISSIONS
+# OPTIONAL: METADATA ACCESS (COMMON FOR LAMBDA PROCESSING)
 ###############################################################################
 
-  XRayPolicy:
+          - Sid: AllowGetBucketLocation
+
+            Effect: Allow
+
+            Action:
+
+              - s3:GetBucketLocation
+
+            Resource:
+
+              - !Sub "arn:aws:s3:::${BucketName}" 
+              ###############################################################################
+# OPTIONAL: PARAMETER STORE ACCESS (SAFE EXTENSION)
+###############################################################################
+
+  ParameterStorePolicy:
 
     Type: AWS::IAM::Policy
 
     Properties:
 
-      PolicyName: !Sub "${ProjectName}-${Environment}-xray-policy"
+      PolicyName: !Sub "${ProjectName}-${Environment}-ssm-access"
 
       Roles:
 
@@ -182,16 +199,60 @@ Resources:
 
         Statement:
 
-          - Sid: XRayTracing
+###############################################################################
+# READ-ONLY ACCESS TO PARAMETER STORE (OPTIONAL EXTENSION)
+###############################################################################
+
+          - Sid: AllowSSMRead
 
             Effect: Allow
 
             Action:
 
-              - xray:PutTraceSegments
-              - xray:PutTelemetryRecords
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:GetParameterHistory
 
             Resource: "*"
+
+###############################################################################
+# CLOUDWATCH LOG GROUP SCOPING (OPTIONAL REFINEMENT)
+###############################################################################
+
+  CloudWatchScopedPolicy:
+
+    Type: AWS::IAM::Policy
+
+    Properties:
+
+      PolicyName: !Sub "${ProjectName}-${Environment}-logs-scoped"
+
+      Roles:
+
+        - !Ref LambdaExecutionRole
+
+      PolicyDocument:
+
+        Version: "2012-10-17"
+
+        Statement:
+
+###############################################################################
+# LIMIT LOGGING TO THIS PROJECT ONLY (BEST PRACTICE ENHANCEMENT)
+###############################################################################
+
+          - Sid: AllowLogGroupAccess
+
+            Effect: Allow
+
+            Action:
+
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+
+            Resource:
+
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-${Environment}*"
 
 ###############################################################################
 # OUTPUTS
@@ -201,20 +262,31 @@ Outputs:
 
   LambdaExecutionRoleName:
 
-    Description: IAM Role name used by the Lambda function.
+    Description: IAM Role name used by Lambda execution
 
     Value: !Ref LambdaExecutionRole
 
     Export:
 
-      Name: !Sub "${AWS::StackName}-LambdaExecutionRole"
+      Name: !Sub "${AWS::StackName}-LambdaRoleName"
 
   LambdaExecutionRoleArn:
 
-    Description: IAM Role ARN.
+    Description: IAM Role ARN used by Lambda execution
 
     Value: !GetAtt LambdaExecutionRole.Arn
 
     Export:
 
-      Name: !Sub "${AWS::StackName}-LambdaExecutionRoleArn"
+      Name: !Sub "${AWS::StackName}-LambdaRoleArn"
+
+  LambdaExecutionRoleId:
+
+    Description: IAM Role unique ID
+
+    Value: !GetAtt LambdaExecutionRole.RoleId
+
+    Export:
+
+      Name: !Sub "${AWS::StackName}-LambdaRoleId"
+      
