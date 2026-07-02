@@ -1,0 +1,26 @@
+{
+  "name": "tarefas-automatizadas-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda function for processing S3 events in a serverless automation project",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"No tests defined\" && exit 0"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "s3",
+    "serverless",
+    "cloudformation",
+    "automation"
+  ],
+  "author": "Sérgio Santos",
+  "license": "MIT",
+  "dependencies": {
+    "aws-sdk": "^2.1692.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
