@@ -14,11 +14,11 @@ O projeto está inserido no ecossistema AWS Serverless, utilizando os principais
 
 A arquitetura segue o padrão event-driven:
 
-```
+
 
 S3 (Upload de arquivo) ↓ Event Notification ↓ AWS Lambda ↓ Processamento do arquivo ↓ CloudWatch Logs
 
-```
+
 
 
 ## Justificativa da Solução
