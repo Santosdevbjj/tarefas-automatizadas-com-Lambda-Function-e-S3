@@ -1,840 +1,232 @@
-## Formação AWS Cloud Foundations.
-
-<img width="105" height="120" alt="1000127839" src="https://github.com/user-attachments/assets/9966277d-4c96-4fc7-a837-3672d4aa70b5" />
-
----
-
-## DESCRIÇÃO
-
-Aplique os conceitos de automação de infraestrutura na AWS utilizando o CloudFormation. O projeto consiste na criação e gerenciamento de recursos por meio de templates em JSON ou YAML, explorando stacks simples (como instâncias EC2 e buckets S3) até cenários mais completos com rede, segurança e versionamento. 
-Este exercício funciona como um desafio de projeto, permitindo ao participante praticar a construção de ambientes em nuvem de forma rápida, escalável e automatizada.
-
-
-
----
-
-
-## Executando Tarefas Automatizadas com AWS Lambda Function e Amazon S3
+<p align="center">
+  <img src="./assets/banner.png" alt="AWS Lambda e Amazon S3 — Automação Serverless">
+</p>
 
 <p align="center">
-<img src="./assets/banner.png" alt="AWS Lambda e Amazon S3">
-</p><p align="center">"AWS" (https://img.shields.io/badge/AWS-Cloud-orange?logo=amazonaws)
-"Amazon S3" (https://img.shields.io/badge/Amazon-S3-red?logo=amazons3)
-"AWS Lambda" (https://img.shields.io/badge/AWS-Lambda-FF9900?logo=awslambda)
-"CloudFormation" (https://img.shields.io/badge/Infrastructure_as_Code-CloudFormation-blue)
-"CloudWatch" (https://img.shields.io/badge/Monitoring-CloudWatch-yellow)
-"IAM" (https://img.shields.io/badge/Security-IAM-green)
-"Python" (https://img.shields.io/badge/Python-3.x-blue?logo=python)
-"License" (https://img.shields.io/badge/License-MIT-green)
+  <img src="https://img.shields.io/badge/AWS-Cloud-orange?logo=amazonaws" alt="AWS">
+  <img src="https://img.shields.io/badge/Amazon-S3-red?logo=amazons3" alt="Amazon S3">
+  <img src="https://img.shields.io/badge/AWS-Lambda-FF9900?logo=awslambda" alt="AWS Lambda">
+  <img src="https://img.shields.io/badge/Infrastructure_as_Code-CloudFormation-blue" alt="CloudFormation">
+  <img src="https://img.shields.io/badge/Monitoring-CloudWatch-yellow" alt="CloudWatch">
+  <img src="https://img.shields.io/badge/Security-IAM_Least_Privilege-green" alt="IAM">
+  <img src="https://img.shields.io/badge/Python-3.13-blue?logo=python" alt="Python">
+  <img src="https://img.shields.io/badge/Runtime_Alt-Node.js-339933?logo=nodedotjs" alt="Node.js">
+  <img src="https://img.shields.io/badge/Architecture-ARM64_Graviton-brightgreen" alt="ARM64">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+</p>
 
-</p>---
+# Automação Serverless de Tarefas com AWS Lambda e Amazon S3
 
-## Visão Geral
-
-Empresas processam diariamente milhares de arquivos armazenados em serviços de armazenamento em nuvem. Em muitos cenários, atividades como validação, organização, transformação de dados, geração de relatórios e envio de notificações ainda dependem de processos manuais, aumentando o tempo de resposta, os custos operacionais e a possibilidade de falhas humanas.
-
-A computação Serverless permite substituir essas tarefas repetitivas por fluxos totalmente automatizados, nos quais eventos gerados pelo armazenamento de arquivos acionam funções responsáveis por executar o processamento necessário sem intervenção humana.
-
-Neste projeto é apresentada a construção de uma arquitetura orientada a eventos utilizando Amazon S3, AWS Lambda, AWS IAM, Amazon CloudWatch e AWS CloudFormation, demonstrando como automatizar tarefas de forma segura, escalável e alinhada às boas práticas da Amazon Web Services.
-
-Além da implementação técnica, este repositório foi elaborado como material de estudo e portfólio profissional, documentando desde o problema de negócio até a arquitetura da solução, as decisões técnicas adotadas e os principais aprendizados obtidos durante o laboratório.
+> Arquitetura orientada a eventos, 100% provisionada como código (CloudFormation Nested Stacks), para eliminar processamento manual de arquivos em ambientes AWS.
 
 ---
 
-## Problema de Negócio
+## 1. Problema
 
-Organizações de diferentes segmentos armazenam continuamente documentos, imagens, planilhas, arquivos de log e diversos outros tipos de objetos em buckets do Amazon S3.
+Ambientes corporativos que armazenam arquivos no Amazon S3 — documentos, planilhas, logs, imagens — frequentemente dependem de rotinas manuais ou agendadas para processá-los. Esse modelo gera cinco sintomas recorrentes: alto tempo de resposta, custo operacional elevado por manutenção de processos ou servidores ociosos, maior probabilidade de erro humano, dificuldade de escalar quando o volume de arquivos cresce, e ausência de processamento em tempo real.
 
-Em muitos ambientes corporativos, o processamento desses arquivos ainda ocorre manualmente ou depende de rotinas agendadas, resultando em desafios como:
-
-- Alto tempo de processamento;
-- Custos operacionais elevados;
-- Maior probabilidade de erros humanos;
-- Dificuldade para escalar a solução;
-- Ausência de processamento em tempo real;
-- Baixa produtividade das equipes.
-
-À medida que o volume de arquivos cresce, essas limitações tornam-se ainda mais evidentes, comprometendo a eficiência operacional e dificultando a evolução da infraestrutura.
-
-Surge então a necessidade de uma arquitetura capaz de responder automaticamente aos eventos gerados durante o armazenamento de novos arquivos, executando tarefas de maneira rápida, segura e altamente escalável.
+O problema central não é a falta de armazenamento — é a falta de uma camada de reação automática a eventos de armazenamento, capaz de acionar processamento imediatamente após o upload, sem intervenção humana e sem servidores dedicados.
 
 ---
 
-## Contexto
+## 2. Contexto
 
-A arquitetura Serverless da AWS oferece um modelo baseado em eventos (Event-Driven Architecture), no qual serviços gerenciados reagem automaticamente às alterações ocorridas no ambiente.
+O projeto foi construído dentro do ecossistema **AWS Serverless / Event-Driven Architecture**, no qual serviços gerenciados reagem a mudanças de estado sem que seja necessário provisionar ou operar infraestrutura contínua. O gatilho central é o evento `ObjectCreated` do Amazon S3, que aciona uma função AWS Lambda.
 
-Neste laboratório, sempre que um novo objeto é enviado para um bucket do Amazon S3, um evento é gerado automaticamente.
-
-Esse evento aciona uma função AWS Lambda responsável por executar uma tarefa previamente definida, como:
-
-- validar arquivos enviados;
-- transformar conteúdos;
-- gerar logs;
-- organizar objetos;
-- atualizar metadados;
-- iniciar novos fluxos automatizados.
-
-Todo esse processo ocorre sem a necessidade de provisionar ou administrar servidores, permitindo que a infraestrutura escale automaticamente conforme a demanda.
-
-Essa abordagem reduz significativamente o esforço operacional e representa um dos principais pilares da computação moderna em nuvem.
+Esse padrão é amplamente aplicado em cenários reais como processamento de documentos, geração de miniaturas de imagem, validação de uploads, ingestão para Data Lakes, pipelines de Machine Learning e automação de processos financeiros — o que torna o laboratório diretamente transferível para arquiteturas corporativas de produção, não apenas um exercício isolado.
 
 ---
 
-Objetivos do Projeto
+## 3. Baseline
 
-Este projeto foi desenvolvido com os seguintes objetivos:
+Antes da automação, o cenário de referência (baseline) é o processamento manual ou por rotina agendada (batch/cron), com as seguintes características mensuráveis:
 
-- compreender o funcionamento da arquitetura Serverless da AWS;
-- automatizar tarefas utilizando eventos do Amazon S3;
-- implementar funções utilizando AWS Lambda;
-- compreender o fluxo de processamento orientado a eventos;
-- aplicar boas práticas de segurança utilizando AWS IAM;
-- monitorar execuções por meio do Amazon CloudWatch;
-- documentar todo o processo de implementação de forma profissional;
-- consolidar conhecimentos em computação em nuvem utilizando serviços gerenciados da AWS.
+| Dimensão | Baseline (processo manual/agendado) |
+|---|---|
+| Latência de processamento | Minutos a horas, dependente de intervenção ou janela de execução agendada |
+| Escalabilidade | Limitada pela capacidade de infraestrutura fixa ou pela equipe |
+| Custo | Contínuo (servidor ou processo ativo, independente do volume) |
+| Rastreabilidade | Manual, sujeita a inconsistência de registro |
+| Erro humano | Presente em cada etapa de validação ou disparo manual |
 
-Além dos objetivos técnicos, este repositório busca demonstrar como arquiteturas orientadas a eventos podem transformar processos operacionais tradicionais em soluções modernas, escaláveis e de baixa manutenção.
-
----
-
-Arquitetura da Solução
-
-A solução proposta utiliza uma arquitetura totalmente Serverless baseada em eventos.
-
-Sempre que um arquivo é enviado ao bucket do Amazon S3, um evento ObjectCreated é gerado automaticamente.
-
-Esse evento dispara uma função AWS Lambda responsável pelo processamento do objeto. Durante sua execução, a função pode validar informações, transformar arquivos, registrar logs no Amazon CloudWatch, atualizar metadados ou executar qualquer outra regra de negócio implementada.
-
-Todo o fluxo ocorre de maneira automática, sem necessidade de servidores dedicados, reduzindo custos operacionais e aumentando a escalabilidade da solução.
-
-Nos próximos tópicos serão apresentados a arquitetura completa, os serviços utilizados, os templates de infraestrutura, o código da função Lambda, as configurações de segurança, o monitoramento da solução e os resultados obtidos durante a implementação do laboratório.
+Esse baseline é o ponto de comparação para os resultados apresentados na Seção 8 — a arquitetura proposta precisa superá-lo em latência, custo variável e rastreabilidade para justificar a mudança.
 
 ---
 
----
+## 4. Premissas
 
-Arquitetura da Solução
-
-A solução foi projetada utilizando uma arquitetura Serverless orientada a eventos (Event-Driven Architecture), na qual o armazenamento de um novo objeto no Amazon S3 atua como gatilho para a execução automática de uma função AWS Lambda.
-
-Essa abordagem elimina a necessidade de provisionamento de servidores, reduz a complexidade operacional e permite que a aplicação escale automaticamente de acordo com a demanda.
-
-O fluxo foi desenvolvido utilizando serviços gerenciados da AWS, seguindo princípios de alta disponibilidade, segurança, escalabilidade e pagamento sob demanda (Pay as You Go).
-
-Diagrama da Arquitetura
-
-«O diagrama abaixo representa o fluxo lógico da solução implementada neste laboratório.»
-
-<p align="center">
-<img src="./assets/arquitetura.png" alt="Arquitetura Serverless AWS">
-</p>                    Upload de Arquivo
-
-                           │
-                           ▼
-
-                 Amazon S3 (Bucket)
-
-                           │
-               Evento ObjectCreated
-
-                           ▼
-
-                 AWS Lambda Function
-
-                           │
-
-        ┌──────────────────┼──────────────────┐
-        │                  │                  │
-        ▼                  ▼                  ▼
-
-  Processamento      CloudWatch Logs     Metadados
-
-                           │
-
-                           ▼
-
-                 Resultado da Automação
+- O bucket Amazon S3 é o único ponto de entrada de arquivos processados pela solução.
+- O evento `ObjectCreated:*` (Put, Post, Copy, CompleteMultipartUpload) é suficiente para acionar o fluxo — não há necessidade de polling.
+- A função Lambda é *stateless*: nenhuma informação de execução é persistida entre invocações.
+- O controle de acesso segue o princípio do menor privilégio (Least Privilege) via IAM, escopado ao bucket e ao log group específicos do projeto.
+- Todas as execuções são registradas automaticamente no CloudWatch Logs, sem etapa adicional de instrumentação manual.
+- A infraestrutura é 100% reproduzível via CloudFormation — nenhum recurso é criado manualmente pelo Console AWS.
+- Por se tratar de um laboratório de portfólio, deliberadamente não foram adicionados pipeline de CI/CD, containerização ou suíte de testes automatizados — o deploy é feito via AWS CLI/scripts bash, escopo apropriado para o estágio exploratório do projeto (ver Seção 7).
 
 ---
 
-Fluxo da Solução
+## 5. Estratégia
 
-O funcionamento da arquitetura ocorre em cinco etapas principais.
+O desenvolvimento seguiu cinco etapas sequenciais, cada uma validável isoladamente antes de compor o fluxo completo:
 
-1. Upload do arquivo
-
-Um usuário, aplicação ou serviço realiza o envio de um arquivo para um bucket do Amazon S3.
-
-O bucket funciona como ponto central de armazenamento dos objetos.
-
----
-
-2. Geração do evento
-
-Após a conclusão do upload, o Amazon S3 gera automaticamente um evento do tipo ObjectCreated.
-
-Esse evento contém informações importantes, como:
-
-- nome do bucket;
-- chave (Key) do objeto;
-- horário do upload;
-- região;
-- informações da requisição.
+1. **Provisionamento da infraestrutura base** — bucket S3, IAM Role, Lambda, CloudWatch Log Group, via CloudFormation.
+2. **Configuração do gatilho no S3** — associação dos eventos `ObjectCreated:*` à função Lambda (`configure-notifications.sh`).
+3. **Implementação da função de processamento** — lógica de leitura do evento, extração de metadados via `head_object`, e log estruturado (implementada em Python e Node.js).
+4. **Habilitação de observabilidade** — CloudWatch Logs com retenção de 30 dias e X-Ray Tracing em modo `Active`.
+5. **Validação end-to-end** — upload real de arquivo, verificação do disparo automático e inspeção dos logs gerados (`invoke.sh` para testes manuais sem depender de upload real).
 
 ---
 
-3. Acionamento da função Lambda
+## 6. Arquitetura
 
-O evento é encaminhado automaticamente para uma função AWS Lambda previamente configurada.
+```
+Upload de Arquivo
+        │
+        ▼
+  Amazon S3 (Bucket)
+        │
+  Evento ObjectCreated
+        ▼
+  AWS Lambda Function (Python 3.13 / ARM64)
+        │
+   ┌────┴────┬─────────────┐
+   ▼          ▼             ▼
+Processamento  CloudWatch   X-Ray
+               Logs         Tracing
+```
 
-Não existe necessidade de servidores dedicados ou processos de monitoramento contínuo.
+**Componentes e responsabilidades:**
 
-A própria infraestrutura da AWS realiza o disparo da execução.
+| Serviço | Papel na Arquitetura |
+|---|---|
+| Amazon S3 | Armazenamento de objetos e emissão do evento `ObjectCreated` |
+| AWS Lambda | Execução do processamento, sem servidor dedicado |
+| AWS IAM | Autorização escopada por recurso (Least Privilege) |
+| Amazon CloudWatch | Logs centralizados e observabilidade de execução |
+| AWS X-Ray | Rastreamento distribuído da execução da função |
+| AWS CloudFormation | Infraestrutura como Código, orquestrada via Nested Stacks |
 
----
-
-4. Processamento automático
-
-Durante sua execução, a função Lambda pode realizar diversas operações, como:
-
-- validar arquivos;
-- organizar objetos;
-- converter formatos;
-- gerar miniaturas de imagens;
-- atualizar metadados;
-- registrar informações em logs;
-- integrar outros serviços da AWS;
-- iniciar novos fluxos automatizados.
-
-Neste laboratório foi implementado um fluxo de processamento automatizado demonstrando como eventos do Amazon S3 podem iniciar funções de forma totalmente transparente para o usuário.
-
----
-
-5. Monitoramento
-
-Todas as execuções da função Lambda podem ser monitoradas pelo Amazon CloudWatch.
-
-Os logs permitem acompanhar:
-
-- início da execução;
-- tempo de processamento;
-- mensagens de depuração;
-- erros encontrados;
-- consumo de recursos.
-
-Esse monitoramento facilita a identificação de problemas e auxilia na evolução da solução.
+A infraestrutura é dividida em **três templates independentes** (`bucket.yaml`, `iam.yaml`, `lambda.yaml`), orquestrados por um `stack.yaml` mestre que os encadeia via `AWS::CloudFormation::Stack` (Nested Stacks), com dependência explícita: bucket → IAM (que consome o nome do bucket) → Lambda (que consome o ARN da role e o bucket de origem do código).
 
 ---
 
-Serviços AWS Utilizados
+## 7. Decisões Técnicas e Trade-offs
 
-A arquitetura faz uso dos seguintes serviços da Amazon Web Services.
+**Nested Stacks vs. stack única monolítica.**
+A infraestrutura foi dividida em três templates (`bucket`, `iam`, `lambda`) orquestrados por um `stack.yaml` mestre, em vez de um único template. Ganho: cada camada pode ser versionada, testada e reutilizada isoladamente. Custo aceito: necessidade de hospedar os templates em um bucket S3 auxiliar (`TemplateURL`) e gerenciar a ordem de dependência manualmente via `DependsOn`.
 
-Serviço| Finalidade
-Amazon S3| Armazenamento de objetos e geração de eventos
-AWS Lambda| Execução automática do processamento
-AWS IAM| Controle de acesso e permissões
-Amazon CloudWatch| Monitoramento, métricas e logs
-AWS CloudFormation| Provisionamento automatizado da infraestrutura
+**Arquitetura ARM64 (Graviton) como padrão, com x86_64 como opção suportada.**
+`Architecture` foi parametrizado no `lambda.yaml`, mas o `Default` é `arm64`. Decisão consciente por menor custo por milissegundo de execução em cargas de I/O leve como esta. Trade-off aceito: caso dependências nativas Python/Node não tenham build ARM64 disponível no futuro, será necessário fallback explícito para `x86_64` — por isso o parâmetro foi mantido configurável, não fixo.
 
-Cada serviço desempenha um papel específico dentro da arquitetura, permitindo que a solução permaneça desacoplada, escalável e de fácil manutenção.
+**Runtime duplo (Python 3.13 e Node.js) no mesmo repositório.**
+A lógica de negócio foi implementada duas vezes — `lambda/python/lambda_function.py` e `lambda/nodejs/index.js` — mantendo paridade funcional (mesmo contrato de entrada/saída). Custo: dobro de manutenção de lógica equivalente. Ganho: demonstra portabilidade da arquitetura entre runtimes sem depender de característica específica de linguagem, decisão deliberada de portfólio para evidenciar competência poliglota, não apenas domínio de uma stack.
 
----
+**IAM escopado por recurso, não por serviço.**
+As policies do `iam.yaml` não usam `Resource: "*"` para S3 e CloudWatch — o acesso é limitado ao ARN exato do bucket (`AllowReadObjects`, `AllowListBucket`) e ao padrão de nome do log group do próprio projeto (`AllowLogGroupAccess`, escopado a `/aws/lambda/${ProjectName}-${Environment}*`). Trade-off aceito conscientemente: a policy de Parameter Store (`ParameterStorePolicy`) mantém `Resource: "*"` porque é uma extensão opcional e não utilizada no fluxo principal — em um cenário de produção real, esse escopo precisaria ser reduzido antes de habilitar a leitura de SSM.
 
-Tecnologias Utilizadas
+**Managed Policy do X-Ray em vez de policy inline.**
+Optou-se por `arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess` (managed policy da própria AWS) em vez de escrever uma policy inline equivalente. Ganho: menor superfície de manutenção e atualização automática pela AWS. Trade-off: menos controle granular do que uma policy inline estritamente escopada às actions `xray:PutTraceSegments` e `xray:PutTelemetryRecords` — aceitável neste estágio por ser uma managed policy de escopo já restrito a essas duas ações.
 
-Durante o desenvolvimento deste laboratório foram utilizados os seguintes recursos tecnológicos:
+**Reserved Concurrency fixado em 10.**
+`ReservedConcurrentExecutions: 10` no `lambda.yaml` limita deliberadamente o paralelismo máximo da função. Ganho: protege custo e evita que um pico de uploads simultâneos gere explosão de invocações concorrentes. Trade-off aceito: sob rajadas acima de 10 eventos simultâneos, o excedente é *throttled* pela própria AWS — comportamento aceitável para um laboratório, mas que precisaria ser recalculado com base em SLA real antes de produção.
 
-- Amazon Web Services (AWS)
-- Amazon S3
-- AWS Lambda
-- AWS Identity and Access Management (IAM)
-- Amazon CloudWatch
-- AWS CloudFormation
-- Python 3.x
-- AWS CLI
-- JSON
-- YAML
-- Git
-- GitHub
+**Lifecycle Rules no S3 (transição e expiração automática de versões).**
+`NoncurrentVersionTransitions` move versões antigas para `STANDARD_IA` aos 30 dias e `NoncurrentVersionExpiration` as remove aos 365 dias. Decisão de custo: evita acúmulo indefinido de versões do bucket versionado sem exigir rotina manual de limpeza.
+
+**Ausência deliberada de CI/CD, Docker e suíte de testes automatizados.**
+O deploy é feito via scripts bash (`deploy.sh`, `delete-stack.sh`) chamando AWS CLI diretamente. Essa é uma decisão de escopo, não uma lacuna: para um projeto exploratório de portfólio, adicionar pipeline de CI/CD ou containerização infla a superfície do projeto sem agregar sinal técnico adicional — o valor demonstrado aqui está na modelagem da arquitetura e no IAM, não na automação do próprio processo de deploy.
 
 ---
 
-Decisões Técnicas
+## 8. Resultados
 
-Durante o desenvolvimento da solução foram adotadas algumas decisões visando simplicidade, escalabilidade e alinhamento às boas práticas da AWS.
+A implementação foi validada com testes práticos de ponta a ponta:
 
-Arquitetura Serverless
+| Teste | Resultado Observado |
+|---|---|
+| Upload de arquivo no bucket | Evento `ObjectCreated` emitido automaticamente pelo S3 |
+| Acionamento da Lambda | Execução automática, sem intervenção manual |
+| Processamento do evento | Extração de bucket, key e metadata com sucesso (`status: processed`) |
+| Geração de logs | Registro completo no CloudWatch, com retenção de 30 dias |
+| Invocação manual de teste | `invoke.sh` reproduz o payload de evento sem depender de upload real |
 
-A utilização do AWS Lambda elimina a necessidade de administrar servidores, reduzindo custos operacionais e simplificando a manutenção da infraestrutura.
-
----
-
-Arquitetura Orientada a Eventos
-
-O Amazon S3 foi configurado para disparar automaticamente eventos de criação de objetos, permitindo que o processamento ocorra apenas quando necessário.
-
-Essa estratégia reduz consumo de recursos e melhora a eficiência da aplicação.
+Frente ao baseline descrito na Seção 3, a arquitetura elimina completamente a etapa de disparo manual — o processamento passa a iniciar em segundos após o upload, com custo proporcional apenas ao volume de eventos processados (modelo *pay-per-use*), e cada execução é rastreável individualmente via CloudWatch e X-Ray.
 
 ---
 
-Infraestrutura como Código (IaC)
+## 9. Impacto / Business Performance
 
-Sempre que possível, os recursos são provisionados utilizando templates do AWS CloudFormation.
+Em termos operacionais, a migração do baseline manual/agendado para a arquitetura event-driven produz três mudanças estruturais mensuráveis:
 
-Essa abordagem proporciona:
+- **Latência de início de processamento**: de minutos/horas (dependente de janela agendada ou disparo humano) para segundos (reação automática ao evento `ObjectCreated`).
+- **Modelo de custo**: de custo fixo/contínuo (infraestrutura sempre ativa) para custo variável por execução (Lambda cobrada por invocação e tempo de execução).
+- **Superfície de erro humano**: eliminada na etapa de disparo — o único ponto manual remanescente é o upload inicial do arquivo pelo usuário ou sistema de origem.
 
-- padronização da infraestrutura;
-- reprodutibilidade dos ambientes;
-- versionamento das configurações;
-- redução de erros humanos;
-- facilidade de manutenção.
+Esses mesmos ganhos são diretamente aplicáveis a cenários corporativos reais documentados no projeto: processamento de documentos, geração de miniaturas de imagem, validação de uploads, ingestão para Data Lakes e pipelines de Machine Learning — o que posiciona esta arquitetura como um padrão replicável, e não apenas como exercício isolado de laboratório.
 
 ---
 
-Princípio do Menor Privilégio
+## 10. Próximos Passos
 
-As permissões concedidas à função Lambda seguem o princípio de Least Privilege, garantindo que a aplicação possua apenas os acessos estritamente necessários para sua execução.
-
-Essa prática reduz riscos de segurança e está alinhada às recomendações da AWS Well-Architected Framework.
-
----
-
-Benefícios da Arquitetura
-
-A arquitetura implementada oferece diversas vantagens quando comparada a soluções tradicionais baseadas em servidores permanentes.
-
-Entre os principais benefícios destacam-se:
-
-- processamento totalmente automático;
-- escalabilidade nativa;
-- redução de custos operacionais;
-- cobrança baseada apenas no consumo;
-- alta disponibilidade;
-- facilidade de manutenção;
-- integração com diversos serviços AWS;
-- menor esforço administrativo;
-- maior produtividade operacional;
-- arquitetura moderna baseada em eventos.
-
-Essas características fazem do modelo Serverless uma excelente alternativa para aplicações que precisam responder rapidamente a eventos gerados em ambientes de nuvem. 
-
+- Integrar **Amazon SQS** como buffer de eventos para absorver picos acima do `ReservedConcurrentExecutions` atual.
+- Adicionar **Amazon SNS** para notificação assíncrona de conclusão de processamento.
+- Persistir metadados processados em **Amazon DynamoDB**, hoje apenas registrados em log.
+- Migrar orquestração de fluxos multi-etapa para **AWS Step Functions**, quando a lógica de negócio deixar de ser uma única função.
+- Expor a solução externamente via **Amazon API Gateway**, para cenários que exijam disparo por API além de evento S3.
+- Adicionar **CloudWatch Alarms** sobre taxa de erro, throttling e duração de execução.
+- Reduzir o escopo `Resource: "*"` da `ParameterStorePolicy` antes de qualquer uso em produção.
+- Automatizar o deploy via **GitHub Actions**, uma vez que o projeto evolua de laboratório para serviço com múltiplos ambientes ativos.
 
 ---
 
+## Como Executar
 
----
+**Pré-requisitos:** conta AWS ativa, AWS CLI configurada, Git, Python 3.13 (opcional para desenvolvimento local).
 
-Premissas da Solução
-
-Para garantir uma implementação consistente, segura e alinhada às boas práticas da AWS, foram adotadas as seguintes premissas durante o desenvolvimento deste laboratório:
-
-- O bucket Amazon S3 é o ponto de entrada para todos os arquivos processados pela solução.
-- A função AWS Lambda é executada exclusivamente em resposta aos eventos configurados no bucket, sem necessidade de execução manual.
-- A infraestrutura pode ser reproduzida utilizando Infrastructure as Code (IaC) com AWS CloudFormation.
-- O controle de acesso é realizado por meio do AWS Identity and Access Management (IAM), seguindo o princípio do menor privilégio (Least Privilege).
-- Todas as execuções da função Lambda são registradas automaticamente no Amazon CloudWatch Logs.
-- A arquitetura foi projetada para ser escalável, desacoplada e orientada a eventos.
-- O laboratório foi desenvolvido com foco educacional e pode ser expandido para cenários corporativos com pequenas adaptações.
-
-Essas premissas orientaram todas as decisões arquiteturais e garantem que a solução possa ser facilmente evoluída para ambientes de produção.
-
----
-
-Estratégia da Solução
-
-O desenvolvimento foi dividido em etapas sequenciais, reduzindo a complexidade da implementação e facilitando a validação de cada componente da arquitetura.
-
-Etapa 1 — Provisionamento da Infraestrutura
-
-Inicialmente são criados os recursos necessários para o funcionamento da solução:
-
-- Bucket Amazon S3;
-- Função AWS Lambda;
-- Role IAM;
-- Políticas de acesso;
-- Configuração dos gatilhos (Triggers);
-- Recursos de monitoramento.
-
-Sempre que possível, o provisionamento é realizado utilizando AWS CloudFormation, garantindo padronização e reprodutibilidade.
-
----
-
-Etapa 2 — Configuração do Bucket Amazon S3
-
-Após a criação do bucket, é configurada a geração automática de eventos para operações do tipo:
-
-- ObjectCreated:Put
-- ObjectCreated:Post
-- ObjectCreated:Copy
-- ObjectCreated:CompleteMultipartUpload
-
-Esses eventos são responsáveis por iniciar automaticamente a execução da função Lambda.
-
----
-
-Etapa 3 — Implementação da Função Lambda
-
-A função Lambda concentra toda a lógica de processamento da solução.
-
-Dependendo do cenário, ela pode:
-
-- validar arquivos enviados;
-- transformar conteúdos;
-- gerar metadados;
-- registrar eventos em log;
-- integrar outros serviços AWS;
-- executar regras de negócio específicas.
-
-Neste laboratório, a função foi desenvolvida de forma modular para facilitar futuras evoluções.
-
----
-
-Etapa 4 — Monitoramento
-
-Cada execução da função gera registros automáticos no Amazon CloudWatch.
-
-Esses registros permitem acompanhar:
-
-- tempo de execução;
-- sucesso das operações;
-- falhas de processamento;
-- mensagens de depuração;
-- consumo de recursos.
-
-O monitoramento contínuo facilita a identificação de problemas e melhora a confiabilidade da solução.
-
----
-
-Etapa 5 — Validação
-
-Após a implantação, são realizados testes enviando arquivos para o bucket Amazon S3.
-
-O comportamento esperado consiste em:
-
-1. Upload do arquivo.
-2. Geração do evento pelo Amazon S3.
-3. Disparo automático da função Lambda.
-4. Execução do processamento.
-5. Registro dos logs no Amazon CloudWatch.
-
-Esse fluxo confirma o correto funcionamento da arquitetura orientada a eventos.
-
----
-
-Provisionamento da Infraestrutura
-
-Um dos principais objetivos deste projeto é demonstrar como ambientes AWS podem ser provisionados de forma automatizada.
-
-Em vez de criar recursos manualmente pelo Console AWS, a infraestrutura pode ser descrita em templates declarativos utilizando AWS CloudFormation.
-
-Essa abordagem oferece diversos benefícios:
-
-- infraestrutura reproduzível;
-- padronização entre ambientes;
-- versionamento das configurações;
-- redução de erros humanos;
-- facilidade de auditoria;
-- implantação mais rápida.
-
-Os templates utilizados neste repositório encontram-se na pasta:
-
-cloudformation/
-
-Entre os recursos provisionados estão:
-
-- Bucket Amazon S3;
-- AWS Lambda Function;
-- IAM Role;
-- IAM Policies;
-- Configuração dos gatilhos;
-- Recursos auxiliares.
-
----
-
-Configuração do Amazon S3
-
-O Amazon S3 atua como ponto de entrada da solução.
-
-Além do armazenamento dos objetos, ele é responsável por gerar automaticamente os eventos que iniciam o processamento.
-
-Durante sua configuração foram definidos:
-
-- bucket dedicado ao laboratório;
-- notificações de eventos;
-- integração com AWS Lambda;
-- políticas de acesso;
-- boas práticas de segurança.
-
-Sempre que um novo objeto é enviado ao bucket, um evento ObjectCreated é emitido para a função Lambda.
-
-Essa comunicação ocorre de forma totalmente transparente para o usuário.
-
----
-
-Configuração da AWS Lambda
-
-A AWS Lambda representa o núcleo da automação.
-
-Sua principal responsabilidade consiste em processar os eventos recebidos do Amazon S3.
-
-A função desenvolvida neste laboratório possui uma estrutura simples, porém facilmente extensível para aplicações corporativas.
-
-O fluxo interno da função pode ser resumido em:
-
-1. Recebimento do evento.
-2. Identificação do bucket.
-3. Identificação do objeto enviado.
-4. Validação das informações.
-5. Execução da regra de negócio.
-6. Registro dos logs.
-7. Finalização da execução.
-
-Essa abordagem favorece a reutilização do código e facilita futuras manutenções.
-
----
-
-Segurança com AWS IAM
-
-A segurança da solução é garantida por meio do AWS Identity and Access Management (IAM).
-
-Foi criada uma função (IAM Role) específica para a execução da AWS Lambda, contendo apenas as permissões necessárias para:
-
-- leitura de objetos no Amazon S3;
-- gravação de logs no Amazon CloudWatch;
-- execução da função Lambda.
-
-A adoção do princípio do menor privilégio reduz a superfície de ataque da aplicação e está alinhada ao AWS Well-Architected Framework.
-
----
-
-Infraestrutura como Código (Infrastructure as Code)
-
-Toda a infraestrutura deste laboratório foi organizada para permitir futura automação utilizando AWS CloudFormation.
-
-Essa estratégia apresenta diversas vantagens em ambientes corporativos:
-
-- criação consistente dos recursos;
-- facilidade de replicação entre ambientes;
-- controle de versões;
-- auditoria das alterações;
-- integração com pipelines de CI/CD;
-- redução de atividades manuais.
-
-A utilização de Infrastructure as Code representa uma das principais boas práticas adotadas em arquiteturas modernas na nuvem.
-
----
-
-Boas Práticas Adotadas
-
-Durante o desenvolvimento foram aplicadas diversas recomendações presentes na documentação oficial da AWS.
-
-Entre elas destacam-se:
-
-- Arquitetura orientada a eventos.
-- Uso de serviços gerenciados.
-- Infraestrutura como Código.
-- Princípio do menor privilégio.
-- Monitoramento centralizado.
-- Baixo acoplamento entre serviços.
-- Escalabilidade automática.
-- Alta disponibilidade.
-- Automação operacional.
-- Documentação técnica completa.
-
-Essas práticas tornam a solução mais confiável, escalável e preparada para evoluções futuras.
-
-
----
-
-
----
-
-Estrutura do Projeto
-
-A organização do repositório foi planejada para facilitar a manutenção, a reutilização dos componentes e a compreensão da arquitetura por outros profissionais.
-
-tarefas-automatizadas-com-Lambda-Function-e-S3
-│
-├── assets/
-│   ├── arquitetura.png
-│   ├── banner.png
-│   ├── fluxo-eventos.png
-│   └── screenshots/
-│
-├── cloudformation/
-│   ├── bucket.yaml
-│   ├── lambda.yaml
-│   ├── iam.yaml
-│   ├── notifications.yaml
-│   └── stack.yaml
-│
-├── docs/
-│   ├── arquitetura.md
-│   ├── configuracao-s3.md
-│   ├── configuracao-lambda.md
-│   ├── seguranca.md
-│   ├── monitoramento.md
-│   └── referencias.md
-│
-├── lambda/
-│   ├── python/
-│   │   ├── lambda_function.py
-│   │   └── requirements.txt
-│   │
-│   └── nodejs/
-│       ├── index.js
-│       └── package.json
-│
-├── policies/
-│
-├── scripts/
-│
-├── examples/
-│
-├── LICENSE
-├── .gitignore
-└── README.md
-
-Essa estrutura separa claramente infraestrutura, código-fonte, documentação, políticas de segurança e materiais de apoio, facilitando futuras expansões do projeto.
-
----
-
-Implementação da Função AWS Lambda
-
-A função Lambda foi desenvolvida para responder automaticamente aos eventos enviados pelo Amazon S3.
-
-Durante sua execução, a função segue o fluxo abaixo:
-
-1. Recebe o evento enviado pelo bucket.
-2. Identifica o bucket de origem.
-3. Obtém o nome do objeto.
-4. Valida as informações recebidas.
-5. Executa a regra de negócio.
-6. Registra informações no Amazon CloudWatch.
-7. Finaliza o processamento.
-
-Essa abordagem desacopla o armazenamento do processamento, permitindo que novas funcionalidades sejam incorporadas sem alterar a arquitetura principal.
-
----
-
-Fluxo Completo da Execução
-
-O comportamento esperado da solução pode ser resumido conforme o fluxo abaixo.
-
-Usuário
-
-   │
-
-Upload do Arquivo
-
-   │
-
-   ▼
-
-Amazon S3
-
-   │
-
-Evento ObjectCreated
-
-   │
-
-   ▼
-
-AWS Lambda
-
-   │
-
-Processamento
-
-   │
-
-   ▼
-
-CloudWatch Logs
-
-   │
-
-   ▼
-
-Execução concluída
-
-Todo o fluxo ocorre automaticamente após o envio do arquivo ao bucket, sem necessidade de intervenção manual.
-
----
-
-Como Executar o Projeto
-
-Pré-requisitos
-
-Antes de iniciar a implementação, é necessário possuir:
-
-- Conta ativa na AWS.
-- AWS CLI instalada e configurada.
-- Permissões para criação de recursos.
-- Git instalado.
-- Python 3.x (opcional para desenvolvimento local).
-- Editor de código, como Visual Studio Code.
-
----
-
-Etapas de Execução
-
-1. Clonar o repositório
-
+```bash
+# 1. Clonar o repositório
 git clone https://github.com/Santosdevbjj/tarefas-automatizadas-com-Lambda-Function-e-S3.git
-
----
-
-2. Acessar o diretório
-
 cd tarefas-automatizadas-com-Lambda-Function-e-S3
 
----
+# 2. Deploy da infraestrutura (Nested Stacks via CloudFormation)
+./scripts/deploy.sh
 
-3. Provisionar os recursos
+# 3. Associar o gatilho S3 → Lambda
+./scripts/configure-notifications.sh
 
-Realize o deploy dos templates do AWS CloudFormation ou crie os recursos manualmente durante o laboratório.
+# 4. Testar sem upload real (payload simulado)
+./scripts/invoke.sh
 
----
-
-4. Configurar o gatilho do Amazon S3
-
-Associe os eventos ObjectCreated do bucket à função AWS Lambda.
-
----
-
-5. Enviar um arquivo
-
-Realize o upload de qualquer arquivo para o bucket configurado.
+# 5. Remover toda a infraestrutura
+./scripts/delete-stack.sh
+```
 
 ---
 
-6. Validar a execução
+## Estrutura do Repositório
 
-Acesse o Amazon CloudWatch e verifique os logs gerados pela função Lambda.
-
----
-
-Testes Realizados
-
-Durante a implementação foram executados testes para validar o funcionamento da arquitetura.
-
-Teste| Resultado Esperado
-Upload de arquivo| Evento gerado pelo Amazon S3
-Acionamento da Lambda| Execução automática
-Processamento do evento| Sucesso
-Geração de logs| CloudWatch registra a execução
-Fluxo completo| Funcionamento conforme esperado
-
-Esses testes demonstram que a comunicação entre os serviços ocorreu corretamente.
+```
+tarefas-automatizadas-com-Lambda-Function-e-S3
+├── cloudformation/        # bucket.yaml, iam.yaml, lambda.yaml, stack.yaml (Nested Stacks)
+├── lambda/
+│   ├── python/            # lambda_function.py (runtime principal)
+│   └── nodejs/            # index.js (runtime alternativo)
+├── policies/              # policies IAM em JSON, referência standalone
+├── scripts/                # deploy.sh, delete-stack.sh, configure-notifications.sh, invoke.sh
+├── examples/               # evento.json e payload de teste
+└── docs/                   # documentação técnica detalhada por tópico
+```
 
 ---
 
-Resultados Obtidos
+## 👤 Autor
 
-A implementação confirmou que arquiteturas Serverless permitem automatizar tarefas de maneira eficiente, reduzindo a necessidade de intervenção humana.
+**Sérgio Santos** — Systems Analyst | Cloud & AI Solutions | DIO Campus Expert
 
-Entre os principais resultados observados destacam-se:
-
-- processamento automático baseado em eventos;
-- eliminação de tarefas repetitivas;
-- escalabilidade automática da solução;
-- monitoramento centralizado;
-- infraestrutura desacoplada;
-- facilidade de manutenção;
-- rápida implantação utilizando serviços gerenciados.
-
-Embora este laboratório tenha caráter educacional, a mesma arquitetura pode ser utilizada em aplicações corporativas com pequenas adaptações.
-
----
-
-Aplicações em Cenários Reais
-
-Arquiteturas como a desenvolvida neste projeto são amplamente utilizadas em ambientes corporativos.
-
-Alguns exemplos incluem:
-
-- processamento automático de documentos;
-- geração de miniaturas de imagens;
-- conversão de arquivos;
-- validação de uploads;
-- processamento de arquivos CSV;
-- integração com Data Lakes;
-- pipelines de Machine Learning;
-- sistemas de backup;
-- automação de processos financeiros;
-- processamento de arquivos de auditoria.
-
-Esses cenários demonstram a versatilidade da combinação entre Amazon S3 e AWS Lambda.
-
----
-
-Aprendizados
-
-O desenvolvimento deste laboratório proporcionou uma compreensão prática de diversos conceitos fundamentais da computação em nuvem.
-
-Entre os principais aprendizados destacam-se:
-
-- arquitetura orientada a eventos;
-- computação Serverless;
-- integração entre serviços AWS;
-- automação de tarefas;
-- monitoramento com Amazon CloudWatch;
-- gerenciamento de permissões utilizando IAM;
-- Infraestrutura como Código;
-- documentação técnica profissional;
-- organização de projetos para portfólio.
-
-Além do conhecimento técnico, o projeto reforçou a importância de documentar decisões arquiteturais e comunicar claramente o valor da solução.
-
----
-
-Próximos Passos
-
-Como evolução natural deste projeto, podem ser implementadas diversas funcionalidades adicionais:
-
-- processamento de múltiplos buckets;
-- integração com Amazon SNS;
-- envio de notificações por e-mail;
-- armazenamento de metadados no Amazon DynamoDB;
-- integração com Amazon EventBridge;
-- orquestração utilizando AWS Step Functions;
-- criação de APIs com Amazon API Gateway;
-- monitoramento avançado com alarmes do CloudWatch;
-- implantação automatizada por pipelines de CI/CD;
-- expansão da infraestrutura utilizando templates modulares do AWS CloudFormation.
-
-Essas melhorias aproximam a solução de cenários reais encontrados em ambientes corporativos.
-
----
-
-Conclusão
-
-Este laboratório demonstrou como arquiteturas orientadas a eventos podem automatizar o processamento de arquivos utilizando serviços gerenciados da AWS.
-
-Ao integrar Amazon S3, AWS Lambda, AWS IAM, Amazon CloudWatch e AWS CloudFormation, foi possível construir uma solução moderna, escalável, segura e de baixa manutenção, alinhada às boas práticas recomendadas pela Amazon Web Services.
-
-Mais do que um exercício técnico, este projeto evidencia como a computação em nuvem pode transformar processos operacionais tradicionais em fluxos automatizados, reduzindo custos, aumentando a produtividade e permitindo que equipes concentrem seus esforços em atividades de maior valor para o negócio.
-
-Este repositório também serve como material de consulta e portfólio profissional, demonstrando competências em arquitetura Serverless, automação, observabilidade, segurança e Infraestrutura como Código (IaC), habilidades essenciais para profissionais que atuam com Cloud Computing.
-
----
-
-
-## 👤 14. Autor
-
-**Sérgio Santos** — Senior Data Engineer & Cloud Architect
-
-15+ anos em sistemas bancários de missão crítica (Banco Bradesco S.A.) · DIO Campus Expert
+15+ anos em sistemas bancários de missão crítica
 
 [![Portfólio](https://img.shields.io/badge/Portfólio-Sérgio_Santos-111827?style=for-the-badge&logo=githubpages&logoColor=00eaff)](https://portfoliosantossergio.vercel.app)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Sérgio_Santos-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/santossergioluiz)
 
 ---
-
-
-
 
