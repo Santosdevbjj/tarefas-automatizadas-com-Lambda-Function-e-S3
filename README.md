@@ -1,3 +1,12 @@
+## Formação AWS Cloud Foundations.
+
+
+<img width="105" height="120" alt="1000127839" src="https://github.com/user-attachments/assets/bd433948-7812-4898-8537-22c084ab1465" />
+
+
+---
+
+
 <p align="center">
   <img src="https://img.shields.io/badge/AWS-Cloud-orange?logo=amazonaws" alt="AWS">
   <img src="https://img.shields.io/badge/Amazon-S3-red?logo=amazons3" alt="Amazon S3">
@@ -12,26 +21,7 @@
 </p>
 
 ---
----
 
-
-
-<p align="center">
-  <img src="./assets/banner.png" alt="AWS Lambda e Amazon S3 — Automação Serverless">
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/AWS-Cloud-orange?logo=amazonaws" alt="AWS">
-  <img src="https://img.shields.io/badge/Amazon-S3-red?logo=amazons3" alt="Amazon S3">
-  <img src="https://img.shields.io/badge/AWS-Lambda-FF9900?logo=awslambda" alt="AWS Lambda">
-  <img src="https://img.shields.io/badge/Infrastructure_as_Code-CloudFormation-blue" alt="CloudFormation">
-  <img src="https://img.shields.io/badge/Monitoring-CloudWatch-yellow" alt="CloudWatch">
-  <img src="https://img.shields.io/badge/Security-IAM_Least_Privilege-green" alt="IAM">
-  <img src="https://img.shields.io/badge/Python-3.13-blue?logo=python" alt="Python">
-  <img src="https://img.shields.io/badge/Runtime_Alt-Node.js-339933?logo=nodedotjs" alt="Node.js">
-  <img src="https://img.shields.io/badge/Architecture-ARM64_Graviton-brightgreen" alt="ARM64">
-  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
-</p>
 
 # Automação Serverless de Tarefas com AWS Lambda e Amazon S3
 
