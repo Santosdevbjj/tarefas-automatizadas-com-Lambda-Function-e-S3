@@ -2,6 +2,14 @@
 
 <img width="105" height="120" alt="1000127839" src="https://github.com/user-attachments/assets/9966277d-4c96-4fc7-a837-3672d4aa70b5" />
 
+---
+
+## DESCRIÇÃO
+
+Aplique os conceitos de automação de infraestrutura na AWS utilizando o CloudFormation. O projeto consiste na criação e gerenciamento de recursos por meio de templates em JSON ou YAML, explorando stacks simples (como instâncias EC2 e buckets S3) até cenários mais completos com rede, segurança e versionamento. 
+Este exercício funciona como um desafio de projeto, permitindo ao participante praticar a construção de ambientes em nuvem de forma rápida, escalável e automatizada.
+
+
 
 ---
 
